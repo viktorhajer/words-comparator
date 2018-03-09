@@ -1,3 +1,27 @@
-<h1>Test Page</h1>
+<div id="form">
+  <input type="text" [(ngModel)]="word1" (keyup)="compare()"/>
+  <input type="text" [(ngModel)]="word2" (keyup)="compare()"/>
+</div>
 
-<button (click)="compare()">COMPARE</button>
+<div id="result" *ngIf="characterSeq.length > 0">
+
+  <div id="seq_container">
+    <div class="seq seq_style_{{seq.flag}}" *ngFor="let seq of characterSeq">{{seq.c}}</div>
+  </div>
+
+  <div id="matrix_container">
+
+    <div class="matrix_row">
+      <div class="matrix_letter">&nbsp;</div>
+      <div class="matrix_letter" *ngFor="let letter of getWordAsList(word1)">{{letter}}</div>
+    </div>
+
+    <div class="matrix_row" *ngFor="let items of matrix; let j = index">
+      <div class="matrix_letter">{{word2[j]}}</div>
+      <div class="matrix_number" [class.pale]="item==0" [class.used]="isUsedItem(j, i)" *ngFor="let item of items; let i = index">
+          {{item}}
+      </div>
+    </div>
+  </div>
+
+</div>

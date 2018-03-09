@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnChanges } from '@angular/core';
 
 @Component({
   selector: 'app-root',
@@ -8,26 +8,50 @@ import { Component } from '@angular/core';
 export class AppComponent {
 
   // Inputs
-  word1: string = 'alma';
-  word2: string = 'alda';
+  word1: string = 'apple';
+  word2: string = 'appel';
 
   // Workspace
   matrix: number[][] = [[]];
   sequences: Sequence[] = [];
   noSequences: Sequence[] = [];
+  highlightedFields: Sequence[] = [];
+  characterSeq: CharacterSeq[] = [];
 
   compare() {
-
-    this.word1 = 'pálinka';
-    this.word2 = 'pántlika';
-
     this.initWorkspace();
     this.normalizeInputs();
-    if (this.word1.length > 0 && this.word2.length > 0)  {
+    if (this.word1.length > 0 && this.word2.length > 0) {
       this.createMatrix();
       this.createSequences();
+      this.normalizeSequences();
       this.analysis();
       this.showResult();
+    }
+  }
+
+  private analysis() {
+    let startX = 0;
+    let startY = 0;
+    let pos = 0;
+    this.sequences.forEach(seq => {
+      if (seq.x - startX != 0) {
+        this.characterSeq.push(new CharacterSeq(pos, this.word2.substr(startX, seq.x - startX), 1));
+      }
+      startX = seq.x + seq.l;
+      if (seq.y - startY != 0) {
+        this.characterSeq.push(new CharacterSeq(pos, this.word1.substr(startY, seq.y - startY), 2));
+      }
+      startY = seq.y + seq.l;
+      pos++;
+      this.characterSeq.push(new CharacterSeq(pos, this.word1.substr(seq.y, seq.l), 0));
+      pos++;
+    });
+    if (this.word2.length > startX) {
+      this.characterSeq.push(new CharacterSeq(pos, this.word2.substr(startX), 1));
+    }
+    if (this.word1.length > startY) {
+      this.characterSeq.push(new CharacterSeq(pos, this.word1.substr(startY), 2));
     }
   }
 
@@ -64,23 +88,37 @@ export class AppComponent {
         }
       }
     }
-    this.sequences.sort(Sequence.sort);
-    for (let i = 1; i < this.sequences.length; i++) {
-      if(this.sequences[i-1].x >= this.sequences[i].x || this.sequences[i-1].y >= this.sequences[i].y) {
-        this.noSequences.push(this.sequences[i-1].l > this.sequences[i].l ? this.sequences[i] : this.sequences[i-1]);
-      }
-    }
-    this.sequences = this.sequences.filter(seq => this.noSequences.indexOf(seq) == -1);
   }
 
-  private analysis() {
-
+  private normalizeSequences() {
+    this.sequences.sort(Sequence.sort);
+    let sum = this.sequences[0].l;
+    for (let i = 1; i < this.sequences.length; i++) {
+      if ((this.sequences[i-1].x+this.sequences[i-1].l) > this.sequences[i].x ||
+        (this.sequences[i-1].y+this.sequences[i-1].l) > this.sequences[i].y) {
+        if (sum > this.sequences[i].l) {
+          this.noSequences.push(this.sequences[i]);
+          this.sequences = this.sequences.filter(seq => seq != this.sequences[i]);
+          i--;
+        } else {
+          for (let j = 0; j < i; j++) {
+            this.noSequences.push(this.sequences[j]);
+          }
+          sum = this.sequences[i].l;
+          this.sequences = this.sequences.slice(i, this.sequences.length);
+          i = 1;
+        }
+      } else {
+        sum += this.sequences[i].l;
+      }
+    }
   }
 
   private showResult() {
     console.log(this.matrix);
     console.log(this.sequences);
     console.log(this.noSequences);
+    console.log(this.characterSeq);
   }
 
   private normalizeInputs() {
@@ -96,10 +134,38 @@ export class AppComponent {
     this.matrix = [[]];
     this.sequences = [];
     this.noSequences = [];
+    this.characterSeq= [];
+    this.highlightedFields = [];
+  }
+
+  getWordAsList(word: string): string[] {
+    let list: string[] = [];
+    for (let i = 0; i < word.length; i++) {
+      list.push(word[i]);
+    }
+    return list;
+  }
+
+  getHighlightedFields() {
+    if (this.highlightedFields.length === 0) {
+      this.sequences.forEach(seq => {
+        for (let i = 0; i < seq.l; i++) {
+          this.highlightedFields.push(new Sequence(seq.x + i, seq.y + i, 1));
+        }
+      });
+    }
+    return this.highlightedFields;
+  }
+
+  isUsedItem(i: number, j: number) {
+    if (!!this.getHighlightedFields().find(seq => seq.y == j && seq.x == i)) {
+      return true;
+    }
+    return false;
   }
 }
 
-class Character {
+class CharacterSeq {
   constructor(public pos: number, public c: string, public flag: number) {
   }
 }
