@@ -1,11 +1,11 @@
-import { Component, OnChanges } from '@angular/core';
+import { Component, OnChanges, OnInit } from '@angular/core';
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss']
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
 
   // Inputs
   word1: string = 'apple';
@@ -18,6 +18,12 @@ export class AppComponent {
   highlightedFields: Sequence[] = [];
   characterSeq: CharacterSeq[] = [];
 
+  ngOnInit() {
+    /*this.word1 = 'aaba';
+    this.word2 = 'abaa';*/
+    this.compare();
+  }
+
   compare() {
     this.initWorkspace();
     this.normalizeInputs();
@@ -25,12 +31,12 @@ export class AppComponent {
       this.createMatrix();
       this.createSequences();
       this.normalizeSequences();
-      this.analysis();
+      this.createResult();
       this.showResult();
     }
   }
 
-  private analysis() {
+  private createResult() {
     let startX = 0;
     let startY = 0;
     let pos = 0;
@@ -91,33 +97,66 @@ export class AppComponent {
   }
 
   private normalizeSequences() {
-    this.sequences.sort(Sequence.sort);
-    let sum = this.sequences[0].l;
-    for (let i = 1; i < this.sequences.length; i++) {
-      if ((this.sequences[i-1].x+this.sequences[i-1].l) > this.sequences[i].x ||
-        (this.sequences[i-1].y+this.sequences[i-1].l) > this.sequences[i].y) {
-        if (sum > this.sequences[i].l) {
-          this.noSequences.push(this.sequences[i]);
-          this.sequences = this.sequences.filter(seq => seq != this.sequences[i]);
-          i--;
-        } else {
-          for (let j = 0; j < i; j++) {
-            this.noSequences.push(this.sequences[j]);
+    if(this.sequences.length > 2) {
+
+      console.log('Start');
+      console.log(this.sequences);
+
+      // sort by Y and X coords
+      this.sequences.sort(Sequence.sort);
+      // start at the second position
+      for (let i = 1; i < this.sequences.length; i++) {
+        // if the previous position is greater than the actual one then one of them should be removed
+        if (this.sequences[i-1].xl > this.sequences[i].x || this.sequences[i-1].yl > this.sequences[i].y) {
+
+
+          let [sum, index] = this.getLength(i);
+          console.log('Action:');
+          console.log(' - act: ' + this.sequences[i].toString());
+          console.log(' - pre: ' + this.sequences[i-1].toString());
+          console.log(' - sum: ' + sum);
+          console.log(' - index: ' + index);
+          console.log(' - i: ' + i);
+
+          // we should remove the actual
+          if (sum >= this.sequences[i].l) {
+            this.noSequences.push(this.sequences[i]);
+            this.sequences = this.sequences.filter(seq => seq != this.sequences[i]);
+            i--;
+            console.log(' -- Remove act');
+          
+          // we should remove the previous one(s)
+          } else {
+            let actual = this.sequences[i];
+            let tail = this.sequences.slice(0, index);
+            let head = this.sequences.slice(i);
+            this.sequences = [];
+            this.sequences.push(...tail, ...head);
+            i = index;
+            console.log(' -- Remove prevs, new index: ' + i);
           }
-          sum = this.sequences[i].l;
-          this.sequences = this.sequences.slice(i, this.sequences.length);
-          i = 1;
+
+          console.log(this.sequences);
         }
-      } else {
-        sum += this.sequences[i].l;
       }
     }
   }
 
+  private getLength(from: number): number[] {
+    let sum = 0;
+    let index = from-1;
+    for(let index = from-1; index >= 0; index--) {
+      if ((this.sequences[index].xl) > this.sequences[from].x || (this.sequences[index].yl) > this.sequences[from].y) {
+        sum += this.sequences[index].l;
+      } else {
+        break;
+      }
+    }
+    return [sum, index];
+  }
+
   private showResult() {
     console.log(this.matrix);
-    console.log(this.sequences);
-    console.log(this.noSequences);
     console.log(this.characterSeq);
   }
 
@@ -146,7 +185,14 @@ export class AppComponent {
     return list;
   }
 
-  getHighlightedFields() {
+  isUsedItem(i: number, j: number) {
+    if (!!this.getHighlightedFields().find(seq => seq.y == j && seq.x == i)) {
+      return true;
+    }
+    return false;
+  }
+
+  private getHighlightedFields() {
     if (this.highlightedFields.length === 0) {
       this.sequences.forEach(seq => {
         for (let i = 0; i < seq.l; i++) {
@@ -156,13 +202,6 @@ export class AppComponent {
     }
     return this.highlightedFields;
   }
-
-  isUsedItem(i: number, j: number) {
-    if (!!this.getHighlightedFields().find(seq => seq.y == j && seq.x == i)) {
-      return true;
-    }
-    return false;
-  }
 }
 
 class CharacterSeq {
@@ -171,7 +210,14 @@ class CharacterSeq {
 }
 
 class Sequence {
+  public xl: number;
+  public yl: number;
   constructor(public x: number, public y: number, public l: number) {
+    this.xl = this.x + this.l;
+    this.yl = this.y + this.l;
+  }
+  toString(): string {
+    return this.x + ', ' + this.y + ' - ' + this.l;
   }
   static sort(s1:Sequence, s2:Sequence) {
     if (s1.y > s2.y) {
@@ -179,7 +225,13 @@ class Sequence {
     } else if (s1.y < s2.y) {
       return -1;
     } else {
-      return 0;
+      if (s1.x > s2.x) {
+        return 1;
+      } else if (s1.x < s2.x) {
+        return -1;
+      } else {
+        return 0;
+      }
     }
   }
 }

@@ -1,4 +1,19 @@
 /* Style */
+#form {
+  h1 {
+    font-size: 20px;
+  }
+  p {
+    font-size: 14px;
+  }
+  input {
+    border: 1px solid #aaa;
+    padding: 4px 6px;
+    letter-spacing: 2px;
+    width: 300px;
+    margin: 10px;
+  }
+}
 #result {
   padding: 10px;
 }
